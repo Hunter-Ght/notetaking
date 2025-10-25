@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from src.models.note import Note, db
+from src.llm import translate_note
 
 note_bp = Blueprint('note', __name__)
 
@@ -73,4 +74,20 @@ def search_notes():
     ).order_by(Note.updated_at.desc()).all()
     
     return jsonify([note.to_dict() for note in notes])
+
+@note_bp.route('/translate', methods=['POST'])
+def translate():
+    """Translate given text to target language using LLM"""
+    try:
+        data = request.json or {}
+        text = data.get('text', '').strip()
+        target_lang = data.get('target_lang', '').strip()
+        if not text or target_lang not in ('en','zh'):
+            return jsonify({'error': 'Provide text and target_lang as en or zh'}), 400
+        translated = translate_note(text, target_lang)
+        if not translated:
+            return jsonify({'error': 'Translation failed'}), 500
+        return jsonify({'translation': translated})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 

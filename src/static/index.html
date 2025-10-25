@@ -346,6 +346,11 @@
                     <div class="editor-actions" id="editorActions" style="display: none;">
                         <button class="btn btn-save" id="saveBtn">💾 Save</button>
                         <button class="btn btn-delete" id="deleteBtn">🗑️ Delete</button>
+                        <select class="btn" id="translateLang" title="Target language">
+                            <option value="en">EN</option>
+                            <option value="zh">中文</option>
+                        </select>
+                        <button class="btn" id="translateBtn">🌐 Translate</button>
                     </div>
                 </div>
 
@@ -390,6 +395,7 @@
                 document.getElementById('saveBtn').addEventListener('click', () => this.saveNote());
                 document.getElementById('deleteBtn').addEventListener('click', () => this.deleteNote());
                 document.getElementById('searchBox').addEventListener('input', (e) => this.searchNotes(e.target.value));
+                document.getElementById('translateBtn').addEventListener('click', () => this.translateCurrentNote());
                 
                 // Auto-save on content change (debounced)
                 let saveTimeout;
@@ -628,6 +634,32 @@
                     return `${diffDays - 1} days ago`;
                 } else {
                     return date.toLocaleDateString();
+                }
+            }
+
+            async translateCurrentNote() {
+                if (!this.currentNote) return;
+                const contentEl = document.getElementById('noteContent');
+                const text = contentEl.value.trim();
+                if (!text) {
+                    this.showMessage('No content to translate', 'error');
+                    return;
+                }
+                const targetLang = document.getElementById('translateLang').value;
+                this.showMessage('Translating...', 'loading');
+                try {
+                    const response = await fetch('/api/translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, target_lang: targetLang })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Translation failed');
+                    contentEl.value = data.translation || '';
+                    this.showMessage('Translated successfully', 'success');
+                    await this.saveNote(true);
+                } catch (error) {
+                    this.showMessage(`Error translating: ${error.message}`, 'error');
                 }
             }
         }
